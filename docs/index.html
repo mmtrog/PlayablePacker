@@ -220,6 +220,12 @@ code { font-family: var(--mono); font-size: 12px; }
   <section class="card log" id="changelog" aria-labelledby="log-h">
     <h2 id="log-h">What's new</h2>
     <ol>
+      <li class="rel" data-version="v1.4">
+        <div class="v"><b>v1.4</b><time datetime="2026-10-11">11 Oct 2026</time></div>
+        <ul>
+          <li>File tải về được đặt tên theo từng mạng (vd. <b>AppLovin_TênGame.html</b>), giải nén ra là phân biệt được ngay.</li>
+        </ul>
+      </li>
       <li class="rel" data-version="v1.3">
         <div class="v"><b>v1.3</b><time datetime="2026-10-11">11 Oct 2026</time></div>
         <ul>
@@ -378,7 +384,8 @@ function buildHtml(net, source, opts) {
 
 async function buildOutput(net, source, opts) {
   const html = buildHtml(net, source, opts);
-  const base = opts.baseName + "-" + net.id;
+  // Network first, so every unzipped file says which network it is for: AppLovin_MyGame.html
+  const base = net.folder + (opts.baseName ? "_" + opts.baseName : "");
   if (net.out === "html") {
     const blob = new Blob([html], { type: "text/html" });
     return { net, filename: base + ".html", blob, html };
@@ -561,7 +568,13 @@ const store = {
 
 function opts() {
   return { ios: $("ios").value.trim(), android: $("android").value.trim(), orient: $("orient").value,
-    ttOrient: parseInt($("ttorient").value, 10) || 0, baseName: state.name };
+    ttOrient: parseInt($("ttorient").value, 10) || 0, baseName: gameName(state.name) };
+}
+// The export's file name without network / Luna words ("MyGame_unity_mraid" -> "MyGame"), so a name like
+// "unity.html" doesn't end up in every network's file.
+const NAME_NOISE = /^(unity|unityads|applovin|ironsource|mraid|luna|playworks|facebook|meta|fb|google|googleads|mintegral|vungle|liftoff|tiktok|pangle|ads?|playable|export|build|index|html|zip)$/i;
+function gameName(name) {
+  return name.split(/[-_.\s]+/).filter(w => w && !NAME_NOISE.test(w)).join("_");
 }
 function fmtSize(b) { return b >= MB ? (b / MB).toFixed(2) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -679,7 +692,7 @@ async function saveAll() {
   const zip = new JSZip();
   for (const n of chosen) { const b = state.builds.get(n.id); zip.file(n.folder + "/" + b.filename, b.blob); }
   const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
-  await saveFile(state.name + "-networks.zip", blob);
+  await saveFile((gameName(state.name) || "Playable") + "_networks.zip", blob);
 }
 
 async function loadFile(file) {
