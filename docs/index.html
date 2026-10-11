@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+<title>Playable Packer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a two-pane packing bench. Left: the source export and its settings. Right: one row per network
+   spec (API, format, size against the cap, checks), the way an ad-ops spec sheet reads. */
+:root {
+  --bg: #eef2f5;
+  --surface: #ffffff;
+  --sunken: #e3e9ee;
+  --ink: #15202b;
+  --muted: #566778;
+  --line: #d3dce4;
+  --accent: #0b6f6a;
+  --accent-ink: #ffffff;
+  --accent-soft: #d8efed;
+  --ok: #1e7f48;
+  --ok-soft: #dcf1e4;
+  --warn: #9a6512;
+  --warn-soft: #f8ecd2;
+  --bad: #b23a26;
+  --bad-soft: #f7ddd7;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141a; --surface: #161f28; --sunken: #1d2833; --ink: #e5edf3; --muted: #93a5b6; --line: #273543;
+    --accent: #4cc2b8; --accent-ink: #062523; --accent-soft: #143633;
+    --ok: #5fcf8d; --ok-soft: #15301f; --warn: #e3b25a; --warn-soft: #33270f; --bad: #f07f6a; --bad-soft: #3a1c16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141a; --surface: #161f28; --sunken: #1d2833; --ink: #e5edf3; --muted: #93a5b6; --line: #273543;
+  --accent: #4cc2b8; --accent-ink: #062523; --accent-soft: #143633;
+  --ok: #5fcf8d; --ok-soft: #15301f; --warn: #e3b25a; --warn-soft: #33270f; --bad: #f07f6a; --bad-soft: #3a1c16;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(30px, 4vw, 42px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 68ch; }
+.bench { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 1020px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 16px; min-width: 0; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; margin: 0; }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; background: var(--sunken); padding: 18px; display: grid; gap: 8px; justify-items: start; cursor: pointer; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop strong { font-size: 15px; }
+.drop span { color: var(--muted); font-size: 13px; }
+.file { display: grid; gap: 4px; font-size: 13px; }
+.file .name { font-family: var(--font-mono); font-size: 13px; word-break: break-all; }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); width: fit-content; }
+.tag.sample { background: var(--warn-soft); color: var(--warn); }
+.tag.detected { background: var(--accent-soft); color: var(--accent); }
+.fields { display: grid; gap: 12px; }
+label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+label.field small { font-size: 12px; }
+input[type="url"], input[type="number"], select { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.toolbar .left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button { font: inherit; font-size: 13.5px; border-radius: 6px; padding: 7px 12px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+th { text-align: left; font-family: var(--font-mono); font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+tr.off td:not(:first-child) { opacity: .45; }
+.net { display: grid; gap: 3px; }
+.net b { font-size: 14.5px; }
+.api { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.fmt { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.meter { display: grid; gap: 4px; min-width: 150px; }
+.bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--ok); }
+.bar i.warn { background: var(--warn); }
+.bar i.bad { background: var(--bad); }
+.nums { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.check { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 6px; word-break: break-word; }
+.check b { color: var(--ink); font-weight: 600; }
+.check .yes { color: var(--ok); }
+.check .no { color: var(--bad); }
+.spec { font-size: 12.5px; color: var(--muted); max-width: 46ch; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.warnings { display: grid; gap: 6px; font-size: 13px; }
+.warnings div { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 7px 10px; }
+details { font-size: 13.5px; }
+details summary { cursor: pointer; font-weight: 700; }
+details ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; max-width: 75ch; }
+code { font-family: var(--font-mono); font-size: 12.5px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 8px; font-size: 13.5px; max-width: calc(100% - 32px); }
+.busy { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Luna export &#x2192; ad networks</div>
+    <h1>Playable Packer</h1>
+    <p class="lede">Drop one Luna export and get a build for each network: the CTA and end-of-game calls rewired to that network's API, packed as the HTML or ZIP it accepts, sized against its cap and scanned for outside requests. Files never leave this page.</p>
+  </header>
+
+  <div class="bench">
+    <section class="panel" aria-labelledby="src-h">
+      <h2 id="src-h">Source export</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="drop-hint">
+        <strong>Drop a Luna export here</strong>
+        <span id="drop-hint">.html (single file) or .zip. Use the MRAID or AppLovin export: its CTA calls <code>mraid.open()</code>.</span>
+        <button type="button" id="pick">Choose file</button>
+        <input type="file" id="file" accept=".html,.htm,.zip" hidden>
+      </div>
+      <div class="file" id="fileinfo"></div>
+      <div class="warnings" id="inwarn"></div>
+
+      <div class="fields">
+        <label class="field" for="ios">App Store link <small>Used only when the export opens the store itself (MRAID networks).</small>
+          <input type="url" id="ios" placeholder="https://apps.apple.com/app/id&#x2026;">
+        </label>
+        <label class="field" for="android">Google Play link
+          <input type="url" id="android" placeholder="https://play.google.com/store/apps/details?id=&#x2026;">
+        </label>
+        <label class="field" for="orient">Orientation
+          <select id="orient"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select>
+        </label>
+        <label class="field" for="ttorient">TikTok <code>config.json</code> playable_orientation
+          <input type="number" id="ttorient" min="0" max="2" step="1" value="0">
+          <small>Check the value for your orientation in TikTok's playable spec.</small>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="out-h">
+      <div class="toolbar">
+        <div class="left"><h2 id="out-h">Network builds</h2><span class="busy" id="busy"></span></div>
+        <div class="left">
+          <button type="button" id="checkall">Check all CTAs</button>
+          <button type="button" class="primary" id="saveall">Download selected (.zip, one folder per network)</button>
+        </div>
+      </div>
+      <div class="table">
+        <table>
+          <thead><tr><th scope="col"><span class="sr">Use</span></th><th scope="col">Network</th><th scope="col">Output</th><th scope="col">Size / cap</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <details>
+        <summary>What changes in each build</summary>
+        <ul>
+          <li>A small bridge script goes first in <code>&lt;head&gt;</code>. It routes the CTA (<code>mraid.open</code>, <code>FbPlayableAd.onCTAClick</code>, <code>ExitApi.exit</code>, <code>window.install</code>, <code>playableSDK.openAppStore</code>, store links opened with <code>window.open</code>) to the target network's call, and stands in for the other networks' objects so the export never touches an API that is not there.</li>
+          <li>End of game: when the game calls <code>window.__playableGameEnd()</code> (or <code>mraid.close()</code> / <code>gameEnd()</code> on networks that stand them in), the bridge maps it to <code>gameEnd()</code> (Mintegral) or <code>postMessage("complete")</code> (Liftoff).</li>
+          <li>MRAID networks get <code>&lt;script src="mraid.js"&gt;</code>; Google gets its ExitApi script and <code>ad.orientation</code> meta; other builds lose any network script tag the export carried.</li>
+          <li>Check CTA loads the bridge in a sandboxed frame with that network's API stubbed and reports which call fired. Still run each file through the network's own preview or validator before a campaign.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+"use strict";
+const MB = 1024 * 1024;
+// Network specs. limit = bytes of the file the network receives (the .html, or the .zip).
+const NETWORKS = [
+  { id: "applovin", folder: "AppLovin", name: "AppLovin", api: "mraid", out: "html", limit: 5 * MB, spec: "Single HTML, MRAID 2.0." },
+  { id: "unity", folder: "UnityAds", name: "Unity Ads", api: "mraid", out: "html", limit: 5 * MB, spec: "Single HTML, MRAID." },
+  { id: "ironsource", folder: "ironSource", name: "ironSource", api: "mraid", out: "html", limit: 5 * MB, spec: "Single HTML, MRAID." },
+  { id: "mraid", folder: "MRAID", name: "MRAID (generic)", api: "mraid", out: "html", limit: 5 * MB, spec: "For any other MRAID 2.0 network." },
+  { id: "facebook", folder: "Meta", name: "Meta (Facebook)", api: "facebook", out: "html", limit: 2 * MB, spec: "Single HTML, no outside requests. Cap shown is 2 MB; check Meta's current limit." },
+  { id: "google", folder: "GoogleAds", name: "Google Ads", api: "google", out: "zip", limit: 5 * MB, spec: "ZIP with index.html, ExitApi + ad.orientation." },
+  { id: "mintegral", folder: "Mintegral", name: "Mintegral", api: "mintegral", out: "zip", limit: 5 * MB, spec: "ZIP with index.html; install() / gameEnd() / gameReady()." },
+  { id: "vungle", folder: "Liftoff", name: "Liftoff (Vungle)", api: "vungle", out: "zip", limit: 5 * MB, spec: "ZIP with index.html; postMessage download / complete." },
+  { id: "tiktok", folder: "TikTok", name: "TikTok", api: "tiktok", out: "zip", limit: 3 * MB, spec: "ZIP with index.html + config.json; playableSDK.openAppStore()." },
+];
+const API_LABEL = {
+  mraid: "mraid.open()", facebook: "FbPlayableAd.onCTAClick()", google: "ExitApi.exit()",
+  mintegral: "window.install()", vungle: "parent.postMessage('download')", tiktok: "playableSDK.openAppStore()",
+};
+const EXIT_API = "https://tpc.googlesyndication.com/pagead/gadgets/html5/api/exitapi.js";
+
+// \u2500\u2500 Bridge injected into every build (serialized with its config) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function bridge(cfg) {
+  var w = window, ended = false, origOpen = w.open;
+  var STORE = /^https?:\/\/(apps\.apple\.com|itunes\.apple\.com|play\.google\.com|market\.android\.com)\//i;
+  function store(u) {
+    if (u) return u;
+    var ua = navigator.userAgent || "";
+    return /iPhone|iPad|iPod|Macintosh/.test(ua) ? cfg.ios : cfg.android;
+  }
+  function cta(u) {
+    try {
+      switch (cfg.api) {
+        case "mraid":
+          if (w.mraid && typeof w.mraid.open === "function" && !w.mraid.__packer) return w.mraid.open(store(u));
+          var url = store(u); if (url) origOpen.call(w, url, "_blank"); return;
+        case "facebook": if (w.FbPlayableAd) w.FbPlayableAd.onCTAClick(); return;
+        case "google": if (w.ExitApi) w.ExitApi.exit(); return;
+        case "mintegral": if (typeof w.install === "function" && !w.install.__packer) w.install(); return;
+        case "vungle": w.parent.postMessage("download", "*"); return;
+        case "tiktok":
+          if (w.playableSDK && typeof w.playableSDK.openAppStore === "function") return w.playableSDK.openAppStore();
+          var t = store(u); if (t) origOpen.call(w, t, "_blank"); return;
+      }
+    } catch (e) { console.error("[Playable Packer] CTA failed", e); }
+  }
+  function end() {
+    if (ended) return; ended = true;
+    try {
+      if (cfg.api === "mintegral" && typeof w.gameEnd === "function" && !w.gameEnd.__packer) w.gameEnd();
+      else if (cfg.api === "vungle") w.parent.postMessage("complete", "*");
+    } catch (e) { console.error("[Playable Packer] game end failed", e); }
+  }
+  function mark(f) { f.__packer = true; return f; }
+  w.__playableCTA = cta;
+  w.__playableGameEnd = end;
+  // Stand-ins for the other networks' objects, so an export built for one of them still reaches the CTA.
+  if (cfg.api !== "mraid" && !w.mraid) {
+    var listeners = {};
+    w.mraid = {
+      __packer: true,
+      getState: function () { return "default"; }, getVersion: function () { return "2.0"; },
+      getPlacementType: function () { return "interstitial"; }, isViewable: function () { return true; },
+      addEventListener: function (e, f) {
+        (listeners[e] = listeners[e] || []).push(f);
+        if (e === "ready") setTimeout(f, 0);
+        if (e === "viewableChange") setTimeout(function () { f(true); }, 0);
+        if (e === "stateChange") setTimeout(function () { f("default"); }, 0);
+      },
+      removeEventListener: function (e, f) { var l = listeners[e] || []; var i = l.indexOf(f); if (i >= 0) l.splice(i, 1); },
+      open: function (u) { cta(u); }, close: function () { end(); },
+      useCustomClose: function () {}, expand: function () {}, resize: function () {}, playVideo: function () {},
+      setOrientationProperties: function () {}, getOrientationProperties: function () { return { allowOrientationChange: true, forceOrientation: "none" }; },
+      setExpandProperties: function () {}, getExpandProperties: function () { return { width: w.innerWidth, height: w.innerHeight, useCustomClose: true, isModal: true }; },
+      setResizeProperties: function () {}, supports: function () { return false; },
+      getScreenSize: function () { return { width: w.innerWidth, height: w.innerHeight }; },
+      getMaxSize: function () { return { width: w.innerWidth, height: w.innerHeight }; },
+      getCurrentPosition: function () { return { x: 0, y: 0, width: w.innerWidth, height: w.innerHeight }; },
+      getDefaultPosition: function () { return { x: 0, y: 0, width: w.innerWidth, height: w.innerHeight }; },
+      getAudioVolume: function () { return null; }, storePicture: function () {}, createCalendarEvent: function () {}
+    };
+  }
+  if (cfg.api !== "facebook" && !w.FbPlayableAd) w.FbPlayableAd = { __packer: true, onCTAClick: function () { cta(); } };
+  if (cfg.api !== "google" && !w.ExitApi) w.ExitApi = { __packer: true, exit: function () { cta(); } };
+  if (cfg.api !== "mintegral") {
+    if (typeof w.install !== "function") w.install = mark(function () { cta(); });
+    if (typeof w.gameEnd !== "function") w.gameEnd = mark(function () { end(); });
+  }
+  if (cfg.api !== "tiktok" && !w.playableSDK) w.playableSDK = { __packer: true, openAppStore: function () { cta(); } };
+  // Store links opened directly also become the network's CTA.
+  w.open = function (u) {
+    if (typeof u === "string" && STORE.test(u)) { cta(u); return null; }
+    return origOpen.apply(w, arguments);
+  };
+  if (cfg.api === "mintegral") {
+    w.addEventListener("load", function () { if (typeof w.gameReady === "function") w.gameReady(); });
+  }
+}
+
+// \u2500\u2500 HTML surgery \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const NETWORK_SCRIPT = /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(mraid\.js|exitapi\.js|playable-sdk[^"']*\.js|dapi\.js)["'][^>]*>\s*<\/script>/gi;
+const ORIENT_META = /<meta\b[^>]*name\s*=\s*["']ad\.(orientation|size)["'][^>]*>/gi;
+
+function headInject(html, snippet) {
+  const m = html.match(/<head\b[^>]*>/i);
+  if (m) return html.slice(0, m.index + m[0].length) + snippet + html.slice(m.index + m[0].length);
+  const h = html.match(/<html\b[^>]*>/i);
+  if (h) return html.slice(0, h.index + h[0].length) + "<head>" + snippet + "</head>" + html.slice(h.index + h[0].length);
+  return snippet + html;
+}
+
+// JSON that is safe inside an inline <script> (no "<\/script>" from a pasted link).
+function jsonForScript(v) { return JSON.stringify(v).replace(/</g, "\\u003c"); }
+
+function buildHtml(net, source, opts) {
+  let html = source.replace(NETWORK_SCRIPT, tag => net.api === "tiktok" && /playable-sdk/i.test(tag) ? tag : "").replace(ORIENT_META, "");
+  const cfg = { api: net.api, ios: opts.ios || "", android: opts.android || "" };
+  let head = "";
+  if (net.api === "mraid") head += '<script src="mraid.js"><\/script>';
+  if (net.api === "google") head += '<meta name="ad.orientation" content="' + opts.orient + '"><script type="text/javascript" src="' + EXIT_API + '"><\/script>';
+  head += "<script>/* Playable Packer: " + net.id + " bridge */(" + bridge.toString() + ")(" + jsonForScript(cfg) + ");<\/script>";
+  return headInject(html, head);
+}
+
+async function buildOutput(net, source, opts) {
+  const html = buildHtml(net, source, opts);
+  const base = opts.baseName + "-" + net.id;
+  if (net.out === "html") {
+    const blob = new Blob([html], { type: "text/html" });
+    return { net, filename: base + ".html", blob, html };
+  }
+  const zip = new JSZip();
+  zip.file("index.html", html);
+  if (net.id === "tiktok") zip.file("config.json", JSON.stringify({ playable_orientation: opts.ttOrient, playable_languages: ["en"] }, null, 2));
+  const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 9 } });
+  return { net, filename: base + ".zip", blob, html };
+}
+
+// Outside requests the network would block or flag (scripts, styles, media, fetch targets).
+function externalHosts(html, net) {
+  const hosts = new Map();
+  const re = /(?:src|href)\s*=\s*["'](https?:\/\/[^"']+)["']|url\(\s*["']?(https?:\/\/[^"')]+)|(?:fetch|open)\(\s*["'](https?:\/\/[^"']+)["']/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const url = m[1] || m[2] || m[3];
+    if (net.api === "google" && url === EXIT_API) continue;
+    if (/^https?:\/\/(apps\.apple\.com|itunes\.apple\.com|play\.google\.com)/i.test(url)) continue; // store links are CTA targets
+    if (/^https?:\/\/www\.w3\.org\//i.test(url)) continue; // XML namespaces
+    try { const h = new URL(url).host; hosts.set(h, (hosts.get(h) || 0) + 1); } catch (e) {}
+  }
+  return [...hosts.keys()];
+}
+
+// \u2500\u2500 Input: single HTML, or a ZIP whose relative scripts/styles/media get inlined \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const MIME = { js: "text/javascript", css: "text/css", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", mp3: "audio/mpeg", ogg: "audio/ogg", wav: "audio/wav", m4a: "audio/mp4", mp4: "video/mp4", json: "application/json", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", wasm: "application/wasm" };
+function ext(p) { const i = p.lastIndexOf("."); return i < 0 ? "" : p.slice(i + 1).toLowerCase(); }
+function resolve(dir, ref) {
+  const parts = (dir ? dir.split("/") : []).concat(ref.split("?")[0].split("#")[0].split("/"));
+  const out = [];
+  for (const p of parts) { if (p === "" || p === ".") continue; if (p === "..") out.pop(); else out.push(p); }
+  return out.join("/");
+}
+async function readZip(file) {
+  const zip = await JSZip.loadAsync(file);
+  const files = Object.keys(zip.files).filter(p => !zip.files[p].dir && !p.startsWith("__MACOSX/"));
+  const htmls = files.filter(p => /\.html?$/i.test(p));
+  if (!htmls.length) throw new Error("This ZIP has no .html file. Export a single-HTML build from Luna, or a ZIP with index.html.");
+  const entry = htmls.find(p => /(^|\/)index\.html?$/i.test(p)) || htmls[0];
+  const dir = entry.includes("/") ? entry.slice(0, entry.lastIndexOf("/")) : "";
+  let html = await zip.file(entry).async("string");
+  const used = new Set([entry]);
+  const warnings = [];
+  async function inline(ref) {
+    const path = resolve(dir, ref);
+    const f = zip.file(path);
+    if (!f) return null;
+    used.add(path);
+    return f;
+  }
+  // url(...) in CSS resolves against the stylesheet's own folder.
+  async function inlineCssUrls(css, cssDir) {
+    const parts = [];
+    let last = 0;
+    for (const m of css.matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi)) {
+      const ref = m[2].trim();
+      if (/^(https?:|data:|\/\/|#)/i.test(ref)) continue;
+      const path = resolve(cssDir, ref);
+      const f = zip.file(path);
+      if (!f) continue;
+      used.add(path);
+      parts.push(css.slice(last, m.index), 'url("data:' + (MIME[ext(path)] || "application/octet-stream") + ";base64," + (await f.async("base64")) + '")');
+      last = m.index + m[0].length;
+    }
+    return parts.length ? parts.join("") + css.slice(last) : css;
+  }
+  // <script src="x.js"><\/script>
+  for (const m of [...html.matchAll(/<script\b([^>]*?)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script>/gi)]) {
+    if (/^(https?:|data:|\/\/)/i.test(m[2]) || /mraid\.js$/i.test(m[2])) continue;
+    const f = await inline(m[2]); if (!f) continue;
+    const code = (await f.async("string")).replace(/<\/script/gi, "<\\/script");
+    html = html.replace(m[0], () => "<script" + m[1] + m[3] + ">" + code + "<\/script>");
+  }
+  // <link rel="stylesheet" href="x.css">
+  for (const m of [...html.matchAll(/<link\b[^>]*rel\s*=\s*["']stylesheet["'][^>]*>/gi)]) {
+    const href = (m[0].match(/href\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (!href || /^(https?:|data:|\/\/)/i.test(href)) continue;
+    const f = await inline(href); if (!f) continue;
+    const path = resolve(dir, href);
+    const css = await inlineCssUrls(await f.async("string"), path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+    html = html.replace(m[0], () => "<style>" + css + "</style>");
+  }
+  // src="x.png" / href="x.png" on media
+  for (const m of [...html.matchAll(/\b(src|href)\s*=\s*["']([^"']+\.(png|jpe?g|gif|webp|svg|mp3|ogg|wav|m4a|mp4|woff2?|ttf))["']/gi)]) {
+    if (/^(https?:|data:|\/\/)/i.test(m[2])) continue;
+    const f = await inline(m[2]); if (!f) continue;
+    const data = await f.async("base64");
+    html = html.replace(m[0], () => m[1] + '="data:' + (MIME[ext(m[2])] || "application/octet-stream") + ";base64," + data + '"');
+  }
+  // url(x.png) inside inline <style> blocks of the page itself
+  for (const m of [...html.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi)]) {
+    if (!/url\(/i.test(m[2])) continue;
+    const css = await inlineCssUrls(m[2], dir);
+    if (css !== m[2]) html = html.replace(m[0], () => "<style" + m[1] + ">" + css + "</style>");
+  }
+  const left = files.filter(p => !used.has(p));
+  if (left.length) warnings.push(left.length + " file(s) in the ZIP are not referenced by plain src/href and were left out (" + left.slice(0, 4).join(", ") + (left.length > 4 ? ", \u2026" : "") + "). Builds may break if the export loads them at run time; export a single-HTML build instead.");
+  return { html, warnings, entry };
+}
+
+function detect(html) {
+  const found = [];
+  if (/mraid/i.test(html)) found.push("MRAID");
+  if (/FbPlayableAd/.test(html)) found.push("FbPlayableAd");
+  if (/ExitApi/.test(html)) found.push("ExitApi");
+  if (/\bwindow\.install\b|\binstall\s*&&\s*install\(/.test(html)) found.push("install()");
+  if (/playableSDK/.test(html)) found.push("playableSDK");
+  if (/__playableGameEnd/.test(html)) found.push("game-end hook");
+  if (/\bLuna\b|lunalabs/i.test(html)) found.unshift("Luna");
+  return found;
+}
+
+// \u2500\u2500 Sample (shown until a real export is dropped) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const SAMPLE_HTML = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sample playable</title>' +
+  '<style>html,body{margin:0;height:100%;background:#7bc9c6;font-family:sans-serif;display:grid;place-items:center}button{font-size:22px;padding:14px 28px;border:0;border-radius:12px;background:#2f9e44;color:#fff}</style></head>' +
+  '<body><button id="cta">PLAY NOW</button><script>document.getElementById("cta").onclick=function(){' +
+  'if(window.mraid)mraid.open("https://apps.apple.com/app/id0000000000");if(window.__playableGameEnd)__playableGameEnd();};<\/script></body></html>';
+
+// \u2500\u2500 CTA check: the build's bridge in a sandboxed frame, with the target network's API stubbed \u2500\u2500
+const STUBS = {
+  mraid: 'window.mraid={getState:function(){return"default"},addEventListener:function(){},isViewable:function(){return true},open:function(u){log("mraid.open("+(u||"")+")")}};',
+  facebook: 'window.FbPlayableAd={onCTAClick:function(){log("FbPlayableAd.onCTAClick()")}};',
+  google: 'window.ExitApi={exit:function(){log("ExitApi.exit()")}};',
+  mintegral: 'window.install=function(){log("window.install()")};window.gameEnd=function(){log("window.gameEnd()")};window.gameReady=function(){log("window.gameReady()")};',
+  vungle: '',
+  tiktok: 'window.playableSDK={openAppStore:function(){log("playableSDK.openAppStore()")}};',
+};
+const checkResults = new Map();
+function checkCta(net, opts) {
+  return new Promise(resolve => {
+    const token = Math.random().toString(36).slice(2);
+    const cfg = { api: net.api, ios: opts.ios || "https://apps.apple.com/app/id0000000000", android: opts.android || "" };
+    const doc = "<!doctype html><html><head><script>var calls=[];function log(s){calls.push(s)}" +
+      "window.open=function(u){log('window.open('+u+')');return null};" + STUBS[net.api] + "<\/script>" +
+      "<script>(" + bridge.toString() + ")(" + jsonForScript(cfg) + ");<\/script></head><body><script>" +
+      // What a Luna MRAID export does on CTA, then the end-of-game hook.
+      'setTimeout(function(){try{mraid.open(' + jsonForScript(cfg.ios) + ')}catch(e){log("error: "+e.message)}' +
+      'try{__playableGameEnd()}catch(e){log("error: "+e.message)}' +
+      'setTimeout(function(){parent.postMessage({packerCheck:"' + token + '",calls:calls},"*")},50)},30);<\/script></body></html>';
+    const frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.hidden = true;
+    const vungleCalls = [];
+    let timer;
+    function done(calls) {
+      window.removeEventListener("message", onMessage);
+      clearTimeout(timer);
+      frame.remove();
+      resolve(calls.concat(vungleCalls));
+    }
+    function onMessage(e) {
+      if (e.source !== frame.contentWindow) return;
+      if (e.data === "download" || e.data === "complete") { vungleCalls.push("parent.postMessage(\"" + e.data + "\")"); return; }
+      if (e.data && e.data.packerCheck === token) done(e.data.calls || []);
+    }
+    window.addEventListener("message", onMessage);
+    timer = setTimeout(() => done(["no answer from the test frame"]), 3000);
+    frame.srcdoc = doc;
+    document.body.appendChild(frame);
+  });
+}
+const EXPECT = {
+  mraid: { cta: /^mraid\.open\(/, end: null },
+  facebook: { cta: /^FbPlayableAd\.onCTAClick/, end: null },
+  google: { cta: /^ExitApi\.exit/, end: null },
+  mintegral: { cta: /^window\.install/, end: /^window\.gameEnd/ },
+  vungle: { cta: /download/, end: /complete/ },
+  tiktok: { cta: /^playableSDK\.openAppStore/, end: null },
+};
+
+// \u2500\u2500 State & UI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const $ = id => document.getElementById(id);
+const state = { source: SAMPLE_HTML, name: "sample-playable", isSample: true, inputWarnings: [], selected: new Set(NETWORKS.map(n => n.id)), builds: new Map() };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("packer." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("packer." + k, JSON.stringify(v)); } catch (e) {} },
+};
+
+function opts() {
+  return { ios: $("ios").value.trim(), android: $("android").value.trim(), orient: $("orient").value,
+    ttOrient: parseInt($("ttorient").value, 10) || 0, baseName: state.name };
+}
+function fmtSize(b) { return b >= MB ? (b / MB).toFixed(2) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+let toastTimer;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3200); }
+
+function renderSource() {
+  const tags = detect(state.source);
+  const size = new Blob([state.source]).size;
+  $("fileinfo").innerHTML =
+    '<span class="name">' + esc(state.name) + (state.isSample ? "" : ".html") + "</span>" +
+    '<span class="nums">' + fmtSize(size) + " HTML</span>" +
+    '<div class="pills">' + (state.isSample ? '<span class="tag sample">Sample playable (demo)</span>' : "") +
+    tags.map(t => '<span class="tag detected">' + esc(t) + "</span>").join("") + "</div>";
+  $("inwarn").innerHTML = state.inputWarnings.map(w => "<div>" + esc(w) + "</div>").join("");
+}
+
+function statusPills(b) {
+  const pills = [];
+  const ratio = b.blob.size / b.net.limit;
+  if (ratio > 1) pills.push('<span class="pill bad">Over cap</span>');
+  else if (ratio > .9) pills.push('<span class="pill warn">Near cap</span>');
+  else pills.push('<span class="pill ok">Fits</span>');
+  if (b.hosts.length) pills.push('<span class="pill warn" title="' + esc(b.hosts.join(", ")) + '">' + b.hosts.length + " outside host" + (b.hosts.length > 1 ? "s" : "") + "</span>");
+  const c = checkResults.get(b.net.id);
+  if (c) pills.push(c.ok ? '<span class="pill ok">CTA ok</span>' : '<span class="pill bad">CTA failed</span>');
+  return pills.join("");
+}
+
+function renderRows() {
+  $("rows").innerHTML = NETWORKS.map(net => {
+    const on = state.selected.has(net.id);
+    const b = state.builds.get(net.id);
+    const ratio = b ? b.blob.size / net.limit : 0;
+    const cls = ratio > 1 ? "bad" : ratio > .9 ? "warn" : "";
+    const c = checkResults.get(net.id);
+    const check = c ? '<div class="check">CTA \u2192 <b>' + esc(c.cta || "nothing") + "</b> <span class=\"" + (c.ctaOk ? "yes" : "no") + "\">" + (c.ctaOk ? "\u2713" : "\u2717") + "</span>" +
+      (EXPECT[net.api].end ? " \u00b7 end \u2192 <b>" + esc(c.end || "nothing") + "</b> <span class=\"" + (c.endOk ? "yes" : "no") + "\">" + (c.endOk ? "\u2713" : "\u2717") + "</span>" : "") + "</div>" : "";
+    return '<tr class="' + (on ? "" : "off") + '">' +
+      '<td><input type="checkbox" id="use-' + net.id + '" aria-label="Build ' + esc(net.name) + '"' + (on ? " checked" : "") + "></td>" +
+      '<td><div class="net"><b>' + esc(net.name) + '</b><span class="api">' + esc(API_LABEL[net.api]) + '</span><span class="spec">' + esc(net.spec) + "</span>" + check + "</div></td>" +
+      '<td><span class="fmt">' + net.out.toUpperCase() + "</span></td>" +
+      '<td><div class="meter"><div class="bar"><i class="' + cls + '" style="width:' + Math.min(100, ratio * 100).toFixed(1) + '%"></i></div>' +
+      '<span class="nums">' + (b ? fmtSize(b.blob.size) : "\u2026") + " / " + fmtSize(net.limit) + "</span></div></td>" +
+      '<td><div class="pills">' + (b ? statusPills(b) : "") + "</div></td>" +
+      '<td><div class="actions"><button type="button" data-check="' + net.id + '">Check CTA</button>' +
+      '<button type="button" data-save="' + net.id + '"' + (b ? "" : " disabled") + ">Download</button></div></td></tr>";
+  }).join("");
+}
+
+let buildRun = 0;
+async function rebuild() {
+  const run = ++buildRun;
+  $("busy").textContent = "Building\u2026";
+  const o = opts();
+  for (const net of NETWORKS) {
+    const out = await buildOutput(net, state.source, o);
+    if (run !== buildRun) return;
+    out.hosts = externalHosts(out.html, net);
+    state.builds.set(net.id, out);
+  }
+  $("busy").textContent = "";
+  renderRows();
+}
+
+async function runCheck(id) {
+  const net = NETWORKS.find(n => n.id === id);
+  const calls = await checkCta(net, opts());
+  const exp = EXPECT[net.api];
+  const short = c => c.replace(/\((https?:[^)]*)\)/, "(store link)");
+  const cta = short(calls.find(c => exp.cta.test(c)) || calls[0] || "");
+  const end = exp.end ? calls.find(c => exp.end.test(c)) || "" : "";
+  const ctaOk = exp.cta.test(cta), endOk = exp.end ? exp.end.test(end) : true;
+  checkResults.set(id, { cta, end, ctaOk, endOk, ok: ctaOk && endOk, calls });
+  renderRows();
+}
+
+// \u2500\u2500 Saving: the viewer's download capability on claude.ai, a plain download elsewhere \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+let downloadsApi;
+const downloadsReady = (async () => {
+  if (!window.claude || typeof window.claude.use !== "function") return null;
+  try { downloadsApi = await window.claude.use("downloads"); } catch (e) { downloadsApi = null; }
+  return downloadsApi;
+})();
+async function saveFile(filename, blob) {
+  const inViewer = !!(window.claude && typeof window.claude.use === "function");
+  if (inViewer) {
+    const api = await downloadsReady;
+    if (!api) { toast("Saving files isn't available in this view."); return; }
+    try { await api.save({ filename, data: blob }); toast("Saved " + filename); }
+    catch (e) {
+      if (e && e.code === "declined") toast("Save cancelled.");
+      else if (e && e.code === "rate_limited") toast("Another save is waiting for confirmation.");
+      else toast("Could not save " + filename + (e && e.message ? ": " + e.message : "."));
+    }
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+async function saveAll() {
+  const chosen = NETWORKS.filter(n => state.selected.has(n.id) && state.builds.has(n.id));
+  if (!chosen.length) { toast("Select at least one network."); return; }
+  // One folder per network holding exactly the file to upload there (.html, or the network's .zip).
+  const zip = new JSZip();
+  for (const n of chosen) { const b = state.builds.get(n.id); zip.file(n.folder + "/" + b.filename, b.blob); }
+  const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+  await saveFile(state.name + "-networks.zip", blob);
+}
+
+async function loadFile(file) {
+  if (!file) return;
+  $("busy").textContent = "Reading " + file.name + "\u2026";
+  try {
+    let html, warnings = [];
+    if (/\.zip$/i.test(file.name)) ({ html, warnings } = await readZip(file));
+    else html = await file.text();
+    if (!/<html|<head|<body|<script/i.test(html)) throw new Error("This file doesn't look like an HTML playable.");
+    state.source = html;
+    state.name = file.name.replace(/\.(html?|zip)$/i, "").replace(/[^\w.-]+/g, "-") || "playable";
+    state.isSample = false;
+    state.inputWarnings = warnings;
+    if (!detect(html).includes("MRAID")) state.inputWarnings.push("No MRAID calls found. The bridge also catches FbPlayableAd, ExitApi, install(), playableSDK and store links, but an MRAID / AppLovin export is the safest source.");
+    if (!/__playableGameEnd/.test(html)) state.inputWarnings.push("No __playableGameEnd hook found: Mintegral gameEnd() and Liftoff \"complete\" fire only if the game calls window.__playableGameEnd() when it ends.");
+    checkResults.clear();
+    renderSource();
+    await rebuild();
+    toast("Loaded " + file.name);
+  } catch (e) {
+    $("busy").textContent = "";
+    toast(e.message || "Could not read that file.");
+  }
+}
+
+// \u2500\u2500 Wiring \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+$("pick").addEventListener("click", e => { e.stopPropagation(); $("file").click(); });
+$("drop").addEventListener("click", () => $("file").click());
+$("drop").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+$("file").addEventListener("change", e => loadFile(e.target.files[0]));
+["dragenter", "dragover"].forEach(t => $("drop").addEventListener(t, e => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach(t => $("drop").addEventListener(t, e => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+
+$("rows").addEventListener("change", e => {
+  const id = e.target.id && e.target.id.replace(/^use-/, "");
+  if (!id || e.target.type !== "checkbox") return;
+  if (e.target.checked) state.selected.add(id); else state.selected.delete(id);
+  store.set("selected", [...state.selected]);
+  renderRows();
+});
+$("rows").addEventListener("click", e => {
+  const save = e.target.closest("[data-save]"), check = e.target.closest("[data-check]");
+  if (save) { const b = state.builds.get(save.dataset.save); if (b) saveFile(b.filename, b.blob); }
+  if (check) runCheck(check.dataset.check);
+});
+$("saveall").addEventListener("click", saveAll);
+$("checkall").addEventListener("click", async () => { for (const n of NETWORKS) if (state.selected.has(n.id)) await runCheck(n.id); toast("CTA checks finished."); });
+["ios", "android", "orient", "ttorient"].forEach(id => {
+  $(id).value = store.get(id, $(id).value);
+  $(id).addEventListener("change", () => { store.set(id, $(id).value); checkResults.clear(); rebuild(); });
+});
+const savedSel = store.get("selected", null);
+if (Array.isArray(savedSel)) state.selected = new Set(savedSel.filter(id => NETWORKS.some(n => n.id === id)));
+
+renderSource();
+renderRows();
+rebuild().then(() => { for (const n of NETWORKS) runCheck(n.id); });
+</script>
+
+</body>
+</html>
