@@ -189,9 +189,9 @@ code { font-family: var(--mono); font-size: 12px; }
         </label>
         <div class="row2">
           <label class="field" for="orient">Orientation
-            <select id="orient"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select>
+            <select id="orient"><option value="responsive">Responsive</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select>
           </label>
-          <label class="field" for="ttorient" title="TikTok config.json playable_orientation &#x2014; check TikTok's spec for your orientation">TikTok orient.
+          <label class="field" for="ttorient" title="TikTok config.json playable_orientation (0 responsive, 1 portrait, 2 landscape). Set from Orientation; change it only if TikTok's spec says otherwise.">TikTok orient.
             <input type="number" id="ttorient" min="0" max="2" step="1" value="0">
           </label>
         </div>
@@ -218,31 +218,31 @@ code { font-family: var(--mono); font-size: 12px; }
   </div>
 
   <section class="card log" id="changelog" aria-labelledby="log-h">
-    <h2 id="log-h">Changelog</h2>
+    <h2 id="log-h">What's new</h2>
     <ol>
-      <li class="rel" data-version="v1.2">
-        <div class="v"><b>v1.2</b><time datetime="2026-10-11">2026-10-11</time></div>
+      <li class="rel" data-version="v1.3">
+        <div class="v"><b>v1.3</b><time datetime="2026-10-11">11 Oct 2026</time></div>
         <ul>
-          <li>New minimal UI: compact network list, details moved into tooltips.</li>
-          <li>Download bar shows how many networks are selected.</li>
-          <li>Changelog added at the bottom of the page.</li>
+          <li>Hỗ trợ playable <b>Responsive</b> (chạy cả dọc lẫn ngang).</li>
+        </ul>
+      </li>
+      <li class="rel" data-version="v1.2">
+        <div class="v"><b>v1.2</b><time datetime="2026-10-11">11 Oct 2026</time></div>
+        <ul>
+          <li>Giao diện mới, gọn và dễ dùng hơn.</li>
         </ul>
       </li>
       <li class="rel" data-version="v1.1">
-        <div class="v"><b>v1.1</b><time datetime="2026-10-11">2026-10-11</time></div>
+        <div class="v"><b>v1.1</b><time datetime="2026-10-11">11 Oct 2026</time></div>
         <ul>
-          <li>Download is one .zip with a folder per network, each holding the file to upload.</li>
-          <li>ZIP input: images and fonts in CSS <code>url()</code> are now inlined.</li>
-          <li>Fixed scripts with <code>$&amp;</code> / <code>$'</code> being corrupted when inlining a ZIP.</li>
-          <li>MRAID networks: store links opened with <code>window.open</code> go through <code>mraid.open</code>.</li>
-          <li>TikTok: keeps the export's SDK tag; falls back to the store link when the SDK is missing.</li>
-          <li>Hosted from <code>/docs</code> on GitHub Pages.</li>
+          <li>Tải về một file .zip, chia sẵn mỗi mạng một thư mục, upload thẳng được.</li>
+          <li>Nút cài game (CTA) hoạt động ổn định hơn trên AppLovin, Unity, ironSource và TikTok.</li>
         </ul>
       </li>
       <li class="rel" data-version="v1.0">
-        <div class="v"><b>v1.0</b><time datetime="2026-10-11">2026-10-11</time></div>
+        <div class="v"><b>v1.0</b><time datetime="2026-10-11">11 Oct 2026</time></div>
         <ul>
-          <li>First release: Luna export to AppLovin, Unity Ads, ironSource, MRAID, Meta, Google Ads, Mintegral, Liftoff and TikTok, with size checks and CTA tests.</li>
+          <li>Ra mắt: chuyển 1 bản playable từ Luna sang 9 mạng quảng cáo (AppLovin, Unity Ads, ironSource, Meta, Google Ads, Mintegral, Liftoff, TikTok, MRAID).</li>
         </ul>
       </li>
     </ol>
@@ -371,7 +371,7 @@ function buildHtml(net, source, opts) {
   const cfg = { api: net.api, ios: opts.ios || "", android: opts.android || "" };
   let head = "";
   if (net.api === "mraid") head += '<script src="mraid.js"><\/script>';
-  if (net.api === "google") head += '<meta name="ad.orientation" content="' + opts.orient + '"><script type="text/javascript" src="' + EXIT_API + '"><\/script>';
+  if (net.api === "google") head += '<meta name="ad.orientation" content="' + (opts.orient === "responsive" ? "portrait,landscape" : opts.orient) + '"><script type="text/javascript" src="' + EXIT_API + '"><\/script>';
   head += "<script>/* Playable Packer: " + net.id + " bridge */(" + bridge.toString() + ")(" + jsonForScript(cfg) + ");<\/script>";
   return headInject(html, head);
 }
@@ -731,6 +731,9 @@ $("rows").addEventListener("click", e => {
 });
 $("saveall").addEventListener("click", saveAll);
 $("checkall").addEventListener("click", async () => { for (const n of NETWORKS) if (state.selected.has(n.id)) await runCheck(n.id); toast("CTA checks finished."); });
+// Orientation also sets TikTok's playable_orientation (still editable).
+const TT_ORIENT = { responsive: 0, portrait: 1, landscape: 2 };
+$("orient").addEventListener("change", () => { $("ttorient").value = TT_ORIENT[$("orient").value]; store.set("ttorient", $("ttorient").value); });
 ["ios", "android", "orient", "ttorient"].forEach(id => {
   $(id).value = store.get(id, $(id).value);
   $(id).addEventListener("change", () => { store.set(id, $(id).value); checkResults.clear(); rebuild(); });
