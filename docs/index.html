@@ -9,179 +9,245 @@
 <title>Playable Packer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a two-pane packing bench. Left: the source export and its settings. Right: one row per network
-   spec (API, format, size against the cap, checks), the way an ad-ops spec sheet reads. */
 :root {
-  --bg: #eef2f5;
+  --bg: #f6f7f9;
   --surface: #ffffff;
-  --sunken: #e3e9ee;
-  --ink: #15202b;
-  --muted: #566778;
-  --line: #d3dce4;
-  --accent: #0b6f6a;
+  --sunken: #f0f2f5;
+  --ink: #0f1419;
+  --muted: #6b7684;
+  --faint: #9aa4b0;
+  --line: #e6e9ee;
+  --accent: #4f46e5;
   --accent-ink: #ffffff;
-  --accent-soft: #d8efed;
-  --ok: #1e7f48;
-  --ok-soft: #dcf1e4;
-  --warn: #9a6512;
-  --warn-soft: #f8ecd2;
-  --bad: #b23a26;
-  --bad-soft: #f7ddd7;
-  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
-  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --radius: 10px;
+  --accent-soft: #eef0ff;
+  --ok: #16a34a;
+  --ok-soft: #e8f7ee;
+  --warn: #b45309;
+  --warn-soft: #fdf3e2;
+  --bad: #dc2626;
+  --bad-soft: #fdecec;
+  --shadow: 0 1px 2px rgba(15, 20, 25, .04), 0 4px 16px rgba(15, 20, 25, .04);
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e141a; --surface: #161f28; --sunken: #1d2833; --ink: #e5edf3; --muted: #93a5b6; --line: #273543;
-    --accent: #4cc2b8; --accent-ink: #062523; --accent-soft: #143633;
-    --ok: #5fcf8d; --ok-soft: #15301f; --warn: #e3b25a; --warn-soft: #33270f; --bad: #f07f6a; --bad-soft: #3a1c16;
+    --bg: #0b0d10; --surface: #13161b; --sunken: #1a1e24; --ink: #eef1f5; --muted: #9099a5; --faint: #646d78; --line: #23282f;
+    --accent: #8b85ff; --accent-ink: #0b0d10; --accent-soft: #1e1c3a;
+    --ok: #4ade80; --ok-soft: #12261a; --warn: #fbbf24; --warn-soft: #2b2110; --bad: #f87171; --bad-soft: #2d1515;
+    --shadow: none;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0e141a; --surface: #161f28; --sunken: #1d2833; --ink: #e5edf3; --muted: #93a5b6; --line: #273543;
-  --accent: #4cc2b8; --accent-ink: #062523; --accent-soft: #143633;
-  --ok: #5fcf8d; --ok-soft: #15301f; --warn: #e3b25a; --warn-soft: #33270f; --bad: #f07f6a; --bad-soft: #3a1c16;
+  --bg: #0b0d10; --surface: #13161b; --sunken: #1a1e24; --ink: #eef1f5; --muted: #9099a5; --faint: #646d78; --line: #23282f;
+  --accent: #8b85ff; --accent-ink: #0b0d10; --accent-soft: #1e1c3a;
+  --ok: #4ade80; --ok-soft: #12261a; --warn: #fbbf24; --warn-soft: #2b2110; --bad: #f87171; --bad-soft: #2d1515;
+  --shadow: none;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
-.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 22px; }
-header { display: grid; gap: 6px; }
-.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(30px, 4vw, 42px); line-height: 1.05; margin: 0; text-wrap: balance; }
-.lede { margin: 0; color: var(--muted); max-width: 68ch; }
-.bench { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 22px; align-items: start; }
-@media (max-width: 1020px) { .bench { grid-template-columns: minmax(0, 1fr); } }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 16px; min-width: 0; }
-h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; margin: 0; }
-.drop { border: 1.5px dashed var(--line); border-radius: 8px; background: var(--sunken); padding: 18px; display: grid; gap: 8px; justify-items: start; cursor: pointer; transition: border-color .15s, background .15s; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.app { max-width: 1080px; margin: 0 auto; padding: 28px 20px 48px; display: grid; gap: 20px; }
+@media (max-width: 600px) { .app { padding-inline: 16px; } }
+
+/* Header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+h1 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; margin: 0; line-height: 1.2; }
+.sub { margin: 0; color: var(--muted); font-size: 13px; }
+.ver { font-family: var(--mono); font-size: 12px; color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; background: var(--surface); }
+.ver:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Layout */
+.bench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 18px; display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 901px) { .card.side { position: sticky; top: 20px; } }
+h2 { font-size: 13px; font-weight: 600; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* Source */
+.drop { border: 1.5px dashed var(--line); border-radius: 12px; background: var(--sunken); padding: 26px 16px; display: grid; gap: 6px; justify-items: center; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
 .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
 .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.drop strong { font-size: 15px; }
-.drop span { color: var(--muted); font-size: 13px; }
-.file { display: grid; gap: 4px; font-size: 13px; }
-.file .name { font-family: var(--font-mono); font-size: 13px; word-break: break-all; }
-.tag { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); width: fit-content; }
-.tag.sample { background: var(--warn-soft); color: var(--warn); }
-.tag.detected { background: var(--accent-soft); color: var(--accent); }
+.drop svg { color: var(--accent); margin-bottom: 4px; }
+.drop strong { font-size: 14px; font-weight: 600; }
+.drop span { color: var(--muted); font-size: 12.5px; }
+.file { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--sunken); min-width: 0; }
+.file .meta { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.file .name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file .nums { font-size: 12px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+.tag.sample { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.warnings { display: grid; gap: 6px; font-size: 12.5px; }
+.warnings:empty { display: none; }
+.warnings div { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 10px; }
 .fields { display: grid; gap: 12px; }
-label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-label.field small { font-size: 12px; }
-input[type="url"], input[type="number"], select { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
-input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.note { font-size: 12.5px; color: var(--muted); margin: 0; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
-.toolbar .left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-button { font: inherit; font-size: 13.5px; border-radius: 6px; padding: 7px 12px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-button:hover { border-color: var(--accent); }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
-button:disabled { opacity: .5; cursor: not-allowed; }
-.table { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
-th { text-align: left; font-family: var(--font-mono); font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); }
-td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-tr:last-child td { border-bottom: 0; }
-tr.off td:not(:first-child) { opacity: .45; }
-.net { display: grid; gap: 3px; }
-.net b { font-size: 14.5px; }
-.api { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
-.fmt { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
-.meter { display: grid; gap: 4px; min-width: 150px; }
-.bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
-.bar i { display: block; height: 100%; border-radius: 999px; background: var(--ok); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label.field { display: grid; gap: 5px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+input[type="url"], input[type="number"], select { font: inherit; font-size: 13.5px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; transition: border-color .15s; }
+input:hover, select:hover { border-color: var(--faint); }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+/* Buttons */
+button { font: inherit; font-size: 13px; font-weight: 500; border-radius: 8px; padding: 7px 12px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: border-color .15s, background .15s, opacity .15s; }
+button:hover { border-color: var(--faint); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; padding: 9px 16px; }
+button.primary:hover { opacity: .9; }
+button.icon { padding: 6px; width: 32px; height: 32px; border-color: transparent; background: transparent; color: var(--muted); }
+button.icon:hover { background: var(--sunken); color: var(--ink); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Networks */
+.head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.head .l { display: flex; align-items: center; gap: 10px; }
+.busy { font-size: 12px; color: var(--faint); }
+.list { display: grid; }
+.net { display: grid; grid-template-columns: auto minmax(0, 1fr) 170px 110px auto; align-items: center; gap: 14px; padding: 11px 4px; border-top: 1px solid var(--line); }
+.net:first-child { border-top: 0; }
+.net.off > :not(.pick) { opacity: .35; }
+.net.off .pick .nm { opacity: .5; }
+.pick { display: contents; cursor: pointer; }
+.nm { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+.nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fmt { font-family: var(--mono); font-size: 10.5px; font-weight: 500; color: var(--muted); background: var(--sunken); border-radius: 5px; padding: 1px 6px; flex: none; }
+input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.meter { display: grid; gap: 5px; }
+.bar { height: 4px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--ok); transition: width .3s; }
 .bar i.warn { background: var(--warn); }
 .bar i.bad { background: var(--bad); }
-.nums { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.pills { display: flex; flex-wrap: wrap; gap: 5px; }
-.pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+.nums { font-family: var(--mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.status { display: flex; gap: 4px; flex-wrap: wrap; }
+.pill { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; cursor: default; }
 .pill.ok { background: var(--ok-soft); color: var(--ok); }
 .pill.warn { background: var(--warn-soft); color: var(--warn); }
 .pill.bad { background: var(--bad-soft); color: var(--bad); }
-.actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.check { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 6px; word-break: break-word; }
-.check b { color: var(--ink); font-weight: 600; }
-.check .yes { color: var(--ok); }
-.check .no { color: var(--bad); }
-.spec { font-size: 12.5px; color: var(--muted); max-width: 46ch; }
-input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
-.warnings { display: grid; gap: 6px; font-size: 13px; }
-.warnings div { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 7px 10px; }
-details { font-size: 13.5px; }
-details summary { cursor: pointer; font-weight: 700; }
-details ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; max-width: 75ch; }
-code { font-family: var(--font-mono); font-size: 12.5px; }
-.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 8px; font-size: 13.5px; max-width: calc(100% - 32px); }
-.busy { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.pill.idle { color: var(--faint); background: transparent; padding-inline: 0; font-weight: 500; }
+.acts { display: flex; gap: 2px; }
+@media (max-width: 640px) {
+  .net { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 8px; }
+  .net .meter { grid-column: 2; grid-row: 2; }
+  .net .status { grid-column: 3; grid-row: 2; justify-content: flex-end; }
+  .net .acts { grid-column: 3; grid-row: 1; }
+}
+.bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.bottom .count { font-size: 13px; color: var(--muted); }
+.bottom .count b { color: var(--ink); }
+
+/* Changelog */
+.log { display: grid; gap: 14px; padding-top: 8px; }
+.log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.log li.rel { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.log li.rel:first-child { border-top: 0; }
+.log .v { display: grid; gap: 2px; align-content: start; }
+.log .v b { font-family: var(--mono); font-size: 13px; }
+.log .v time { font-size: 12px; color: var(--faint); }
+.log ul { margin: 0; padding-left: 16px; display: grid; gap: 3px; color: var(--muted); font-size: 13px; }
+@media (max-width: 600px) { .log li.rel { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+footer.foot { font-size: 12px; color: var(--faint); text-align: center; }
+
+code { font-family: var(--mono); font-size: 12px; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 13px; font-weight: 500; max-width: calc(100% - 32px); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="wrap">
-  <header>
-    <div class="eyebrow">Luna export &#x2192; ad networks</div>
-    <h1>Playable Packer</h1>
-    <p class="lede">Drop one Luna export and get a build for each network: the CTA and end-of-game calls rewired to that network's API, packed as the HTML or ZIP it accepts, sized against its cap and scanned for outside requests. Files never leave this page.</p>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></div>
+      <div><h1>Playable Packer</h1><p class="sub">Luna export &#x2192; ready-to-upload builds for 9 ad networks</p></div>
+    </div>
+    <a class="ver" href="#changelog" id="ver"></a>
   </header>
 
   <div class="bench">
-    <section class="panel" aria-labelledby="src-h">
-      <h2 id="src-h">Source export</h2>
+    <section class="card side" aria-labelledby="src-h">
+      <h2 id="src-h">Source</h2>
       <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="drop-hint">
-        <strong>Drop a Luna export here</strong>
-        <span id="drop-hint">.html (single file) or .zip. Use the MRAID or AppLovin export: its CTA calls <code>mraid.open()</code>.</span>
-        <button type="button" id="pick">Choose file</button>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+        <strong>Drop Luna export</strong>
+        <span id="drop-hint">MRAID / AppLovin build &#xb7; .html or .zip</span>
+        <button type="button" id="pick" hidden>Choose file</button>
         <input type="file" id="file" accept=".html,.htm,.zip" hidden>
       </div>
       <div class="file" id="fileinfo"></div>
       <div class="warnings" id="inwarn"></div>
 
       <div class="fields">
-        <label class="field" for="ios">App Store link <small>Used only when the export opens the store itself (MRAID networks).</small>
+        <label class="field" for="ios">App Store link
           <input type="url" id="ios" placeholder="https://apps.apple.com/app/id&#x2026;">
         </label>
         <label class="field" for="android">Google Play link
           <input type="url" id="android" placeholder="https://play.google.com/store/apps/details?id=&#x2026;">
         </label>
-        <label class="field" for="orient">Orientation
-          <select id="orient"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select>
-        </label>
-        <label class="field" for="ttorient">TikTok <code>config.json</code> playable_orientation
-          <input type="number" id="ttorient" min="0" max="2" step="1" value="0">
-          <small>Check the value for your orientation in TikTok's playable spec.</small>
-        </label>
+        <div class="row2">
+          <label class="field" for="orient">Orientation
+            <select id="orient"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select>
+          </label>
+          <label class="field" for="ttorient" title="TikTok config.json playable_orientation &#x2014; check TikTok's spec for your orientation">TikTok orient.
+            <input type="number" id="ttorient" min="0" max="2" step="1" value="0">
+          </label>
+        </div>
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="out-h">
-      <div class="toolbar">
-        <div class="left"><h2 id="out-h">Network builds</h2><span class="busy" id="busy"></span></div>
-        <div class="left">
-          <button type="button" id="checkall">Check all CTAs</button>
-          <button type="button" class="primary" id="saveall">Download selected (.zip, one folder per network)</button>
-        </div>
+    <section class="card" aria-labelledby="out-h">
+      <div class="head">
+        <div class="l"><h2 id="out-h">Networks</h2><span class="busy" id="busy"></span></div>
+        <button type="button" id="checkall">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          Test all CTAs
+        </button>
       </div>
-      <div class="table">
-        <table>
-          <thead><tr><th scope="col"><span class="sr">Use</span></th><th scope="col">Network</th><th scope="col">Output</th><th scope="col">Size / cap</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
+      <div class="list" id="rows"></div>
+      <div class="bottom">
+        <span class="count" id="selcount"></span>
+        <button type="button" class="primary" id="saveall">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Download .zip
+        </button>
       </div>
-      <details>
-        <summary>What changes in each build</summary>
-        <ul>
-          <li>A small bridge script goes first in <code>&lt;head&gt;</code>. It routes the CTA (<code>mraid.open</code>, <code>FbPlayableAd.onCTAClick</code>, <code>ExitApi.exit</code>, <code>window.install</code>, <code>playableSDK.openAppStore</code>, store links opened with <code>window.open</code>) to the target network's call, and stands in for the other networks' objects so the export never touches an API that is not there.</li>
-          <li>End of game: when the game calls <code>window.__playableGameEnd()</code> (or <code>mraid.close()</code> / <code>gameEnd()</code> on networks that stand them in), the bridge maps it to <code>gameEnd()</code> (Mintegral) or <code>postMessage("complete")</code> (Liftoff).</li>
-          <li>MRAID networks get <code>&lt;script src="mraid.js"&gt;</code>; Google gets its ExitApi script and <code>ad.orientation</code> meta; other builds lose any network script tag the export carried.</li>
-          <li>Check CTA loads the bridge in a sandboxed frame with that network's API stubbed and reports which call fired. Still run each file through the network's own preview or validator before a campaign.</li>
-        </ul>
-      </details>
     </section>
   </div>
+
+  <section class="card log" id="changelog" aria-labelledby="log-h">
+    <h2 id="log-h">Changelog</h2>
+    <ol>
+      <li class="rel" data-version="v1.2">
+        <div class="v"><b>v1.2</b><time datetime="2026-10-11">2026-10-11</time></div>
+        <ul>
+          <li>New minimal UI: compact network list, details moved into tooltips.</li>
+          <li>Download bar shows how many networks are selected.</li>
+          <li>Changelog added at the bottom of the page.</li>
+        </ul>
+      </li>
+      <li class="rel" data-version="v1.1">
+        <div class="v"><b>v1.1</b><time datetime="2026-10-11">2026-10-11</time></div>
+        <ul>
+          <li>Download is one .zip with a folder per network, each holding the file to upload.</li>
+          <li>ZIP input: images and fonts in CSS <code>url()</code> are now inlined.</li>
+          <li>Fixed scripts with <code>$&amp;</code> / <code>$'</code> being corrupted when inlining a ZIP.</li>
+          <li>MRAID networks: store links opened with <code>window.open</code> go through <code>mraid.open</code>.</li>
+          <li>TikTok: keeps the export's SDK tag; falls back to the store link when the SDK is missing.</li>
+          <li>Hosted from <code>/docs</code> on GitHub Pages.</li>
+        </ul>
+      </li>
+      <li class="rel" data-version="v1.0">
+        <div class="v"><b>v1.0</b><time datetime="2026-10-11">2026-10-11</time></div>
+        <ul>
+          <li>First release: Luna export to AppLovin, Unity Ads, ironSource, MRAID, Meta, Google Ads, Mintegral, Liftoff and TikTok, with size checks and CTA tests.</li>
+        </ul>
+      </li>
+    </ol>
+  </section>
+  <footer class="foot">Runs entirely in your browser &#x2014; files are never uploaded.</footer>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -506,24 +572,30 @@ function renderSource() {
   const tags = detect(state.source);
   const size = new Blob([state.source]).size;
   $("fileinfo").innerHTML =
-    '<span class="name">' + esc(state.name) + (state.isSample ? "" : ".html") + "</span>" +
-    '<span class="nums">' + fmtSize(size) + " HTML</span>" +
-    '<div class="pills">' + (state.isSample ? '<span class="tag sample">Sample playable (demo)</span>' : "") +
-    tags.map(t => '<span class="tag detected">' + esc(t) + "</span>").join("") + "</div>";
+    '<div class="meta"><span class="name" title="' + esc(state.name) + '">' + esc(state.name) + (state.isSample ? "" : ".html") + "</span>" +
+    '<span class="nums">' + fmtSize(size) + "</span></div>" +
+    '<div class="tags">' + (state.isSample ? '<span class="tag sample">Demo</span>' : "") +
+    tags.map(t => '<span class="tag">' + esc(t) + "</span>").join("") + "</div>";
   $("inwarn").innerHTML = state.inputWarnings.map(w => "<div>" + esc(w) + "</div>").join("");
 }
 
 function statusPills(b) {
   const pills = [];
   const ratio = b.blob.size / b.net.limit;
-  if (ratio > 1) pills.push('<span class="pill bad">Over cap</span>');
-  else if (ratio > .9) pills.push('<span class="pill warn">Near cap</span>');
-  else pills.push('<span class="pill ok">Fits</span>');
-  if (b.hosts.length) pills.push('<span class="pill warn" title="' + esc(b.hosts.join(", ")) + '">' + b.hosts.length + " outside host" + (b.hosts.length > 1 ? "s" : "") + "</span>");
+  if (ratio > 1) pills.push('<span class="pill bad" title="Bigger than the network\'s cap">Over cap</span>');
+  else if (ratio > .9) pills.push('<span class="pill warn" title="Within 10% of the network\'s cap">Near cap</span>');
+  if (b.hosts.length) pills.push('<span class="pill warn" title="Outside requests: ' + esc(b.hosts.join(", ")) + '">' + b.hosts.length + " host" + (b.hosts.length > 1 ? "s" : "") + "</span>");
   const c = checkResults.get(b.net.id);
-  if (c) pills.push(c.ok ? '<span class="pill ok">CTA ok</span>' : '<span class="pill bad">CTA failed</span>');
+  if (c) {
+    const tip = "CTA \u2192 " + (c.cta || "nothing") + (EXPECT[b.net.api].end ? "\nEnd \u2192 " + (c.end || "nothing") : "");
+    pills.push('<span class="pill ' + (c.ok ? "ok" : "bad") + '" title="' + esc(tip) + '">' + (c.ok ? "CTA \u2713" : "CTA \u2717") + "</span>");
+  }
+  if (!pills.length) pills.push('<span class="pill idle">Ready</span>');
   return pills.join("");
 }
+
+const ICON_TEST = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v18l15-9z"/></svg>';
+const ICON_SAVE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
 
 function renderRows() {
   $("rows").innerHTML = NETWORKS.map(net => {
@@ -531,19 +603,19 @@ function renderRows() {
     const b = state.builds.get(net.id);
     const ratio = b ? b.blob.size / net.limit : 0;
     const cls = ratio > 1 ? "bad" : ratio > .9 ? "warn" : "";
-    const c = checkResults.get(net.id);
-    const check = c ? '<div class="check">CTA \u2192 <b>' + esc(c.cta || "nothing") + "</b> <span class=\"" + (c.ctaOk ? "yes" : "no") + "\">" + (c.ctaOk ? "\u2713" : "\u2717") + "</span>" +
-      (EXPECT[net.api].end ? " \u00b7 end \u2192 <b>" + esc(c.end || "nothing") + "</b> <span class=\"" + (c.endOk ? "yes" : "no") + "\">" + (c.endOk ? "\u2713" : "\u2717") + "</span>" : "") + "</div>" : "";
-    return '<tr class="' + (on ? "" : "off") + '">' +
-      '<td><input type="checkbox" id="use-' + net.id + '" aria-label="Build ' + esc(net.name) + '"' + (on ? " checked" : "") + "></td>" +
-      '<td><div class="net"><b>' + esc(net.name) + '</b><span class="api">' + esc(API_LABEL[net.api]) + '</span><span class="spec">' + esc(net.spec) + "</span>" + check + "</div></td>" +
-      '<td><span class="fmt">' + net.out.toUpperCase() + "</span></td>" +
-      '<td><div class="meter"><div class="bar"><i class="' + cls + '" style="width:' + Math.min(100, ratio * 100).toFixed(1) + '%"></i></div>' +
-      '<span class="nums">' + (b ? fmtSize(b.blob.size) : "\u2026") + " / " + fmtSize(net.limit) + "</span></div></td>" +
-      '<td><div class="pills">' + (b ? statusPills(b) : "") + "</div></td>" +
-      '<td><div class="actions"><button type="button" data-check="' + net.id + '">Check CTA</button>' +
-      '<button type="button" data-save="' + net.id + '"' + (b ? "" : " disabled") + ">Download</button></div></td></tr>";
+    const tip = net.spec + "\nCTA: " + API_LABEL[net.api] + "\nFolder: " + net.folder + "/";
+    return '<div class="net' + (on ? "" : " off") + '">' +
+      '<input type="checkbox" id="use-' + net.id + '" aria-label="Build ' + esc(net.name) + '"' + (on ? " checked" : "") + ">" +
+      '<label class="nm" for="use-' + net.id + '" title="' + esc(tip) + '"><span>' + esc(net.name) + '</span><span class="fmt">' + net.out.toUpperCase() + "</span></label>" +
+      '<div class="meter"><div class="bar"><i class="' + cls + '" style="width:' + Math.min(100, ratio * 100).toFixed(1) + '%"></i></div>' +
+      '<span class="nums">' + (b ? fmtSize(b.blob.size) : "\u2026") + " / " + fmtSize(net.limit) + "</span></div>" +
+      '<div class="status">' + (b ? statusPills(b) : "") + "</div>" +
+      '<div class="acts"><button type="button" class="icon" data-check="' + net.id + '" title="Test CTA" aria-label="Test ' + esc(net.name) + ' CTA">' + ICON_TEST + "</button>" +
+      '<button type="button" class="icon" data-save="' + net.id + '" title="Download ' + esc(b ? b.filename : "") + '" aria-label="Download ' + esc(net.name) + ' build"' + (b ? "" : " disabled") + ">" + ICON_SAVE + "</button></div></div>";
   }).join("");
+  const n = NETWORKS.filter(x => state.selected.has(x.id)).length;
+  $("selcount").innerHTML = "<b>" + n + "</b> of " + NETWORKS.length + " networks selected";
+  $("saveall").disabled = !n;
 }
 
 let buildRun = 0;
@@ -666,6 +738,7 @@ $("checkall").addEventListener("click", async () => { for (const n of NETWORKS) 
 const savedSel = store.get("selected", null);
 if (Array.isArray(savedSel)) state.selected = new Set(savedSel.filter(id => NETWORKS.some(n => n.id === id)));
 
+$("ver").textContent = (document.querySelector("#changelog [data-version]") || {}).dataset?.version || "";
 renderSource();
 renderRows();
 rebuild().then(() => { for (const n of NETWORKS) runCheck(n.id); });

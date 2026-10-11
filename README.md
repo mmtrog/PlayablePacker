@@ -39,5 +39,7 @@ For Mintegral `gameEnd()` and Liftoff `complete`, the game must call `window.__p
 python3 make-standalone.py
 ```
 
+For each release, add an entry at the top of the **Changelog** list in `playable-packer.html` (`<li class="rel" data-version="vX.Y">`). The version shown in the page header comes from the newest entry.
+
 ## Host on GitHub Pages
 Settings → Pages → Build and deployment: **Deploy from a branch**, branch `main`, folder `/docs`. The site is served at `https://<user>.github.io/<repo>/`.
